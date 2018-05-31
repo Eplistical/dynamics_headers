@@ -80,12 +80,25 @@ def get_show_para_content(varlist):
         rst += tmp[1:] % (v, v,)
     return rst[:-1]
 
+def get_example_input(varlist):
+    rst = ''''''
+    tmp = '''
+0        # %s
+'''
+    for v in varlist:
+        rst += tmp[1:] % v
+    return rst[:-1]
 
 if __name__ == '__main__':
     fname = sys.argv[1]
     varlist, varpart = extract_varlist(fname)
+    # write para.hpp
     with open('para.hpp', 'w') as f:
         f.write(hppfile[1:] % (varpart,
                 get_load_para_content(varlist),
                 get_show_para_content(varlist))
                 )
+
+    # generate example input file
+    with open('sample.in', 'w') as f:
+        f.write(get_example_input(varlist))
