@@ -27,13 +27,13 @@ namespace {
 
         public:
             // population on impurity
-            double get_N() const noexcept {
+            double get_N() const {
                 const double h(potential.cal_h(this->x));
                 return misc::fermi(h * this->kT_inv);
             }
 
             // calcualte current force & fric
-            void cal_force_fric(double& force, double& fric) 
+            void cal_force_fric(double& force, double& fric) const
             {
                 double h, dhdx, f, dfde;
                 h = potential.cal_h(this->x);
@@ -62,7 +62,7 @@ namespace {
 
         public:
             double nuclear_fric;
-            potential_t& potential;
+            const potential_t& potential;
     };
 
 };

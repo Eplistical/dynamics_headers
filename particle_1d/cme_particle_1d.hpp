@@ -35,7 +35,7 @@ namespace {
             }
 
         private:
-            void cal_force_fric(double& force, double& fric) {
+            void cal_force_fric(double& force, double& fric) const {
                 force = potential.cal_force(this->x, surface);
                 fric = nuclear_fric;
             }
@@ -79,7 +79,7 @@ namespace {
         public:
             int surface;
             double nuclear_fric;
-            potential_t& potential;
+            const potential_t& potential;
     };
 
 };

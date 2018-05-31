@@ -3,6 +3,7 @@
 
 #include "cme_particle_1d.hpp"
 #include "misc/randomer.hpp"
+#include "misc/fermi.hpp"
 
 namespace {
 
@@ -27,14 +28,18 @@ namespace {
             ~BCME_Particle_1D() noexcept = default;
 
         public:
-            double get_N() {
+            double get_N() const noexcept {
                 return this->surface;
             }
 
         private:
-            void cal_force_fric(double& force, double& fric) {
+            void cal_force_fric(double& force, double& fric) const {
                 double fBCME;
-                fBCME = inttable_mgr.retrieve("fBCME", this->x);
+                double h(this->potential.cal_h(this->x));
+                double dhdx(this->potential.cal_dh_dx(this->x));
+                double f(misc::fermi(h * this->kT_inv));
+
+                fBCME = f * dhdx + inttable_mgr.retrieve("force", this->x);
 
                 force = this->potential.cal_force(this->x, this->surface) + fBCME;
                 fric = this->nuclear_fric;
@@ -59,7 +64,7 @@ namespace {
             }
 
         private:
-            inttable_mgr_t& inttable_mgr;
+            const inttable_mgr_t& inttable_mgr;
     };
 
 };

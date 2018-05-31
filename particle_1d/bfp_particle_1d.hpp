@@ -29,14 +29,14 @@ namespace {
 
         public:
             // population on impurity
-            double get_N() const noexcept {
+            double get_N() const {
                 return inttable_mgr.retrieve("n", this->x);
             }
 
         private:
-            void cal_force_fric(double& force, double& fric) 
+            void cal_force_fric(double& force, double& fric) const
             {
-                force = inttable_mgr.retrieve("force", this->x);
+                force = potential.cal_force(this->x, 0.0) + inttable_mgr.retrieve("force", this->x);
                 fric = nuclear_fric + inttable_mgr.retrieve("fric", this->x);
             }
 
@@ -56,8 +56,8 @@ namespace {
 
         public:
             double nuclear_fric;
-            potential_t& potential;
-            inttable_mgr_t& inttable_mgr;
+            const potential_t& potential;
+            const inttable_mgr_t& inttable_mgr;
     };
 
 };
