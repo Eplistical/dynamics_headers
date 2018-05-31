@@ -58,7 +58,7 @@ namespace {
     double InttableMgr_Base
         ::retrieve(const string& key, double x) 
         {
-            retrieve_impl(key, x);
+            return this->retrieve_impl(key, x);
         }
 
     /*****************************************************************************/

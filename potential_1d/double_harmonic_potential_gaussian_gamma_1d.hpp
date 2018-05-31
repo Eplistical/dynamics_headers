@@ -5,11 +5,11 @@
 
 namespace {
 
-    struct DoubleHarmonicPotentialConstGamma_1 final 
+    struct DoubleHarmonicPotentialGaussianGamma_1D final 
         : public Potential_1D
     {
         public:
-            DoubleHarmonicPotentialConstGamma_1D(double MASS, double OMEGA, 
+            DoubleHarmonicPotentialGaussianGamma_1D(double MASS, double OMEGA, 
                     double HSHIFT, double VSHIFT, double GAMMA, double ALPHA) noexcept :
                 mass(MASS), omega(OMEGA), mw2(MASS * OMEGA * OMEGA),
                 hshift(HSHIFT), vshift(VSHIFT),
@@ -17,7 +17,7 @@ namespace {
                 {
                 }
 
-            ~DoubleHarmonicPotentialConstGamma_1D() noexcept = default;
+            ~DoubleHarmonicPotentialGaussianGamma_1D() noexcept = default;
 
         private:
             double cal_potential_impl(double x, int i) const noexcept override {

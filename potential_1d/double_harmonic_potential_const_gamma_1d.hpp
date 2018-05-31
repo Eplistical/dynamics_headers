@@ -5,7 +5,7 @@
 
 namespace {
 
-    struct DoubleHarmonicPotentialConstGamma_1 final 
+    struct DoubleHarmonicPotentialConstGamma_1D final 
         : public Potential_1D
     {
         public:
@@ -44,10 +44,12 @@ namespace {
 
         public:
             double cal_h(double x) const noexcept {
+                return cal_potential_impl(x, 1) - cal_potential_impl(x, 0);
                 return 0.5 * mw2 * hshift * (hshift - 2 * x) + vshift;
             }
 
             double cal_dh_dx(double x) const noexcept {
+                return cal_force_impl(x, 0) - cal_force_impl(x, 1);
                 static const double dhdx(-mw2 * hshift);
                 return dhdx;
             }

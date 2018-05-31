@@ -7,22 +7,19 @@
 
 namespace {
 
-    template <typename PotentialType, typename InttableMgrType>
+    template <typename PotentialType>
         struct FP_Particle_1D final : public Particle_1D
     {
         public:
             using potential_t = PotentialType;
-            using inttable_mgr_t = InttableMgrType;
 
         public:
             FP_Particle_1D(double X, double V, double MASS, double KT,
                     double NUCLEAR_FRIC,
-                    potential_t& POTENTIAL,
-                    inttable_mgr_t& INTTABLE_MGR) noexcept :
+                    potential_t& POTENTIAL) noexcept :
                 Particle_1D(X, V, MASS, KT),
                 nuclear_fric(NUCLEAR_FRIC), 
-                potential(POTENTIAL), 
-                inttable_mgr(INTTABLE_MGR)
+                potential(POTENTIAL)
             {
             }
 
@@ -31,10 +28,11 @@ namespace {
         public:
             // population on impurity
             double get_N() const noexcept {
-                return inttable_mgr.retrieve("n", this->x);
+                const double h(potential.cal_h(this->x));
+                return misc::fermi(h * this->kT_inv);
             }
 
-        private:
+            // calcualte current force & fric
             void cal_force_fric(double& force, double& fric) 
             {
                 double h, dhdx, f, dfde;
@@ -43,10 +41,11 @@ namespace {
                 f = misc::fermi(h * this->kT_inv);
                 dfde = -this->kT_inv * f * (1.0 - f);
 
-                force = potential.cal_force(this->x, 0) + dhdx * h;
+                force = potential.cal_force(this->x, 0) - dhdx * f;
                 fric = nuclear_fric - 1.0 / potential.cal_gamma(this->x) * pow(dhdx, 2) * dfde;
             }
 
+        private:
             void do_evolve(double dt) override {
                 const double half_dt_mass_inv(0.5 * dt / this->mass);
                 double force, fric, noise_force;
@@ -64,7 +63,6 @@ namespace {
         public:
             double nuclear_fric;
             potential_t& potential;
-            inttable_mgr_t& inttable_mgr;
     };
 
 };

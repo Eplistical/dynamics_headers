@@ -8,7 +8,7 @@ hppfile ='''
 
 #include <cstdlib>
 #include <string>
-#include "ioer.hpp"
+#include "misc/ioer.hpp"
 
 namespace
 {
@@ -30,10 +30,10 @@ namespace
 
         void loadpara(const string& fname) {
             input_t inp(fname);
+            inp.read_text();
 
 %s
 
-            inp.read_text();
             inp.close();
         }
 
@@ -42,6 +42,8 @@ namespace
 %s
         }
     };
+
+};
 
 #endif // _PARA_HPP
 '''
