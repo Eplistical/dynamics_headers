@@ -21,7 +21,8 @@ namespace {
                     potential_t& POTENTIAL,
                     inttable_mgr_t& INTTABLE_MGR) noexcept :
                 CME_Particle_1D<PotentialType>(X, V, MASS, KT, SURFACE, NUCLEAR_FRIC, POTENTIAL),
-                inttable_mgr(INTTABLE_MGR)
+                inttable_mgr(INTTABLE_MGR), 
+                int_gamma_t(0.0)
                 {
                 }
 
@@ -29,7 +30,10 @@ namespace {
 
         public:
             double get_N() const noexcept {
-                return this->surface;
+                double h(this->potential.cal_h(this->x));
+                double f(misc::fermi(h * this->kT_inv));
+                double n(this->inttable_mgr.retrieve("n", this->x));
+                return this->surface + (n - f) * (1.0 - exp(-int_gamma_t));
             }
 
         private:
@@ -46,6 +50,9 @@ namespace {
             }
 
             void do_evolve(double dt) override {
+                // integral {gamma(x(t)) * dt}
+                int_gamma_t += this->potential.cal_gamma(this->x) * dt;
+
                 // Velocity Verlet
                 const double half_dt_mass_inv(0.5 * dt / this->mass);
                 double force, fric, noise_force;
@@ -65,6 +72,7 @@ namespace {
 
         private:
             const inttable_mgr_t& inttable_mgr;
+            double int_gamma_t;
     };
 
 };
