@@ -36,7 +36,7 @@ namespace {
         private:
             void cal_force_fric(double& force, double& fric) const
             {
-                force = potential.cal_force(this->x, 0.0) + inttable_mgr.retrieve("force", this->x);
+                force = potential.cal_force(this->x, 0) + inttable_mgr.retrieve("force", this->x);
                 fric = nuclear_fric + inttable_mgr.retrieve("fric", this->x);
             }
 
