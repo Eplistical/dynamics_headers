@@ -8,7 +8,7 @@
 namespace {
 
     template <typename PotentialType, typename InttableMgrType>
-        class BCME_Particle_1D final : public CME_Particle_1D<PotentialType>
+        struct BCME_Particle_1D final : public CME_Particle_1D<PotentialType>
     {
         public:
             using potential_t = PotentialType;
@@ -18,8 +18,8 @@ namespace {
             BCME_Particle_1D(double X, double V, double MASS, double KT,
                     int SURFACE,
                     double NUCLEAR_FRIC,
-                    potential_t& POTENTIAL,
-                    inttable_mgr_t& INTTABLE_MGR) noexcept :
+                    const potential_t& POTENTIAL,
+                    const inttable_mgr_t& INTTABLE_MGR) noexcept :
                 CME_Particle_1D<PotentialType>(X, V, MASS, KT, SURFACE, NUCLEAR_FRIC, POTENTIAL),
                 inttable_mgr(INTTABLE_MGR), 
                 int_gamma_t(0.0)
@@ -30,44 +30,73 @@ namespace {
 
         public:
             double get_N() const noexcept {
-                double h(this->potential.cal_h(this->x));
-                double f(misc::fermi(h * this->kT_inv));
-                double n(this->inttable_mgr.retrieve("n", this->x));
+                double f(misc::fermi(this->potential.cal_h(this->x) * this->kT_inv));
+                double n(inttable_mgr.retrieve("n", this->x));
                 return this->surface + (n - f) * (1.0 - exp(-int_gamma_t));
             }
 
         private:
-            void cal_force_fric(double& force, double& fric) const {
-                double fBCME;
-                double h(this->potential.cal_h(this->x));
-                double dhdx(this->potential.cal_dh_dx(this->x));
-                double f(misc::fermi(h * this->kT_inv));
-
-                fBCME = f * dhdx + inttable_mgr.retrieve("force", this->x);
-
-                force = this->potential.cal_force(this->x, this->surface) + fBCME;
-                fric = this->nuclear_fric;
+            inline double cal_force(double x, int surf) const {
+                double f(misc::fermi(this->potential.cal_h(x) * this->kT_inv));
+                double dhdx(this->potential.cal_dhdx(x));
+                double n(inttable_mgr.retrieve("n", x));
+                double fBCME(-dhdx * (n - f));
+                return this->potential.cal_force(x, surf) + fBCME;
             }
 
-            void do_evolve(double dt) override {
+            inline double cal_fric(double x) const {
+                return this->nuclear_fric;
+            }
+
+            inline double rk4_f(double x, double v, int surf, double fric, double noise) const {
+                return v;
+            }
+
+            inline double rk4_g(double x, double v, int surf, double fric, double noise) const {
+                return (cal_force(x, surf) - fric * v + noise) * this->mass_inv;
+            }
+
+            void do_evolve(double dt, const std::string& alg) override {
+                // hopping
+                this->hopper(dt);
                 // integral {gamma(x(t)) * dt}
                 int_gamma_t += this->potential.cal_gamma(this->x) * dt;
 
-                // Velocity Verlet
-                const double half_dt_mass_inv(0.5 * dt / this->mass);
-                double force, fric, noise_force;
+                if (alg == "verlet") {
+                    const double half_dt_mass_inv(0.5 * dt / this->mass);
+                    double fric, noise_force;
 
-                cal_force_fric(force, fric);
-                noise_force = randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt));
-                this->v += (force - fric * this->v + noise_force) * half_dt_mass_inv;
+                    fric = cal_fric(this->x);
+                    noise_force = randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt));
 
-                this->x += this->v * dt;
+                    this->v += (cal_force(this->x, this->surface) - fric * this->v + noise_force) * half_dt_mass_inv;
+                    this->x += this->v * dt;
+                    this->v += (cal_force(this->x, this->surface) - fric * this->v + noise_force) * half_dt_mass_inv;
+                }
+                else if (alg == "rk4") {
+                    const double half_dt(0.5 * dt);
+                    double k1, k2, k3, k4;
+                    double l1, l2, l3, l4;
+                    double fric, noise_force;
 
-                cal_force_fric(force, fric);
-                this->v += (force - fric * this->v + noise_force) * half_dt_mass_inv;
+                    fric = cal_fric(this->x);
+                    noise_force = randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt));
 
-                // hopping
-                this->hopper(dt);
+                    k1 = rk4_f(this->x, this->v, this->surface, fric, noise_force);
+                    l1 = rk4_g(this->x, this->v, this->surface, fric, noise_force);
+
+                    k2 = rk4_f(this->x + half_dt * k1, this->v + half_dt * l1, this->surface, fric, noise_force);
+                    l2 = rk4_g(this->x + half_dt * k1, this->v + half_dt * l1, this->surface, fric, noise_force);
+
+                    k3 = rk4_f(this->x + half_dt * k2, this->v + half_dt * l2, this->surface, fric, noise_force);
+                    l3 = rk4_g(this->x + half_dt * k2, this->v + half_dt * l2, this->surface, fric, noise_force);
+
+                    k4 = rk4_f(this->x + dt * k3, this->v + dt * l3, this->surface, fric, noise_force);
+                    l4 = rk4_g(this->x + dt * k3, this->v + dt * l3, this->surface, fric, noise_force);
+
+                    this->x += dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4);
+                    this->v += dt / 6.0 * (l1 + 2 * l2 + 2 * l3 + l4);
+                }
             }
 
         private:

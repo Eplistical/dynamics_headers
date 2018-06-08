@@ -1,6 +1,7 @@
 #ifndef _CME_PARTICLE_1D_HPP
 #define _CME_PARTICLE_1D_HPP
 
+#include <string>
 #include "particle_1d_base.hpp"
 #include "misc/randomer.hpp"
 #include "misc/fermi.hpp"
@@ -9,7 +10,7 @@ namespace {
     using std::mt19937;
 
     template <typename PotentialType>
-        class CME_Particle_1D : public Particle_1D
+        struct CME_Particle_1D : public Particle_1D
     {
         public:
             using potential_t = PotentialType;
@@ -19,7 +20,7 @@ namespace {
                     double MASS, double KT,
                     int SURFACE,
                     double NUCLEAR_FRIC,
-                    potential_t& POTENTIAL) noexcept :
+                    const potential_t& POTENTIAL) noexcept :
                 Particle_1D(X, V, MASS, KT),
                 surface(SURFACE), nuclear_fric(NUCLEAR_FRIC),
                 potential(POTENTIAL)
@@ -35,26 +36,61 @@ namespace {
             }
 
         private:
-            void cal_force_fric(double& force, double& fric) const {
-                force = potential.cal_force(this->x, surface);
-                fric = nuclear_fric;
+            inline double cal_force(double x, int surf) const {
+                return potential.cal_force(x, surf);
             }
 
-            virtual void do_evolve(double dt) override {
-                // Velocity Verlet
-                const double half_dt_mass_inv(0.5 * dt / this->mass);
-                double force, fric, noise_force;
+            inline double cal_fric(double x) const {
+                return nuclear_fric;
+            }
 
-                cal_force_fric(force, fric);
-                noise_force = randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt));
-                this->v += (force - fric * this->v + noise_force) * half_dt_mass_inv;
+            inline double rk4_f(double x, double v, int surf, double fric, double noise) const {
+                return v;
+            }
 
-                this->x += this->v * dt;
+            inline double rk4_g(double x, double v, int surf, double fric, double noise) const {
+                return (cal_force(x, surf) - fric * v + noise) * this->mass_inv;
+            }
 
-                cal_force_fric(force, fric);
-                this->v += (force - fric * this->v + noise_force) * half_dt_mass_inv;
+            virtual void do_evolve(double dt, const std::string& alg) override {
                 // hopping
                 hopper(dt);
+
+                if (alg == "verlet") {
+                    const double half_dt_mass_inv(0.5 * dt * this->mass_inv);
+                    double fric, noise;
+
+                    fric = cal_fric(this->x);
+                    noise = randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt));
+
+                    this->v += (cal_force(this->x, surface) - fric * this->v + noise) * half_dt_mass_inv;
+                    this->x += this->v * dt;
+                    this->v += (cal_force(this->x, surface) - fric * this->v + noise) * half_dt_mass_inv;
+                }
+                else if (alg == "rk4") {
+                    const double half_dt(0.5 * dt);
+                    double k1, k2, k3, k4;
+                    double l1, l2, l3, l4;
+                    double fric, noise;
+
+                    fric = cal_fric(this->x);
+                    noise = randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt));
+
+                    k1 = rk4_f(this->x, this->v, surface, fric, noise);
+                    l1 = rk4_g(this->x, this->v, surface, fric, noise);
+
+                    k2 = rk4_f(this->x + half_dt * k1, this->v + half_dt * l1, surface, fric, noise);
+                    l2 = rk4_g(this->x + half_dt * k1, this->v + half_dt * l1, surface, fric, noise);
+
+                    k3 = rk4_f(this->x + half_dt * k2, this->v + half_dt * l2, surface, fric, noise);
+                    l3 = rk4_g(this->x + half_dt * k2, this->v + half_dt * l2, surface, fric, noise);
+
+                    k4 = rk4_f(this->x + dt * k3, this->v + dt * l3, surface, fric, noise);
+                    l4 = rk4_g(this->x + dt * k3, this->v + dt * l3, surface, fric, noise);
+
+                    this->x += dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4);
+                    this->v += dt / 6.0 * (l1 + 2 * l2 + 2 * l3 + l4);
+                }
             }
 
         protected:

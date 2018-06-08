@@ -2,7 +2,10 @@
 #define _PARTICLE_1D_BASE_HPP
 // module for 1d particle base class (abstract class)
 
+#include <string>
+
 namespace {
+
     struct Particle_1D
     {
         public:
@@ -19,8 +22,8 @@ namespace {
             }
 
         public:
-            void evolve(double dt) {
-                do_evolve(dt); 
+            void evolve(double dt, const std::string& alg = "verlet") {
+                do_evolve(dt, alg); 
             }
 
         public:
@@ -29,7 +32,7 @@ namespace {
             double x, v;
 
         private:
-            virtual void do_evolve(double dt) = 0;
+            virtual void do_evolve(double dt, const std::string& alg) = 0;
     };
 };
 

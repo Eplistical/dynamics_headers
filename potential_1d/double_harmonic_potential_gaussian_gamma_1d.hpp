@@ -49,7 +49,7 @@ namespace {
                 return 0.5 * mw2 * hshift * (hshift - 2 * x) + vshift;
             }
 
-            double cal_dh_dx(double x) const noexcept {
+            double cal_dhdx(double x) const noexcept {
                 static const double dhdx(-mw2 * hshift);
                 return dhdx;
             }
