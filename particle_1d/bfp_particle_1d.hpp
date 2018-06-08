@@ -37,17 +37,19 @@ namespace {
         private:
             inline double cal_force(double x) const {
                 double dhdx(potential.cal_dhdx(x));
-                return potential.cal_force(x, 0) + dhdx * inttable_mgr.retrieve("n", x);
+                return potential.cal_force(x, 0) - dhdx * inttable_mgr.retrieve("n", x);
                 /*
                 return potential.cal_force(x, 0) + inttable_mgr.retrieve("force", x);
                 */
             }
 
             inline double cal_fric(double x) const {
+				/*
                 double f(misc::fermi(potential.cal_h(x) * this->kT_inv));
                 double dhdx(potential.cal_dhdx(x));
                 return nuclear_fric + this->kT_inv / potential.cal_gamma(x) * f * (1.0 - f) * pow(dhdx, 2);
-                //return nuclear_fric + inttable_mgr.retrieve("fric", x);
+				*/
+                return nuclear_fric + inttable_mgr.retrieve("fric", x);
             }
 
             inline double rk4_f(double x, double v, double fric, double noise) const {

@@ -49,7 +49,7 @@ namespace {
             map< string, vector<double> > inttable_dict;
             string fname;
             double xmin, xmax, dx, dx_inv;
-            uint32_t Nx;
+            int Nx;
 
         private:
             virtual void load_inttable_impl() = 0;
