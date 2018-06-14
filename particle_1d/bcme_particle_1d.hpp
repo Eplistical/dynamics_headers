@@ -37,10 +37,15 @@ namespace {
 
         private:
             inline double cal_force(double x, int surf) const {
+                /*
                 double f(misc::fermi(this->potential.cal_h(x) * this->kT_inv));
                 double dhdx(this->potential.cal_dhdx(x));
                 double n(inttable_mgr.retrieve("n", x));
                 double fBCME(-dhdx * (n - f));
+                */
+                double f(misc::fermi(this->potential.cal_h(x) * this->kT_inv));
+                double dhdx(this->potential.cal_dhdx(x));
+                double fBCME(dhdx * f + inttable_mgr.retrieve("force", x));
                 return this->potential.cal_force(x, surf) + fBCME;
             }
 
