@@ -11,7 +11,7 @@ namespace
 	struct Hamiltonian_1D
 	{
 		public:
-			Hamiltonian_1D(int DIM) noexcept :
+			explicit Hamiltonian_1D(int DIM) noexcept :
 				dim(DIM)
 				{
 				}

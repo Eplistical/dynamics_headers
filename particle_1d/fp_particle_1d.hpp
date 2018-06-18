@@ -61,6 +61,7 @@ namespace {
 
                     fric = cal_fric(this->x);
                     noise = randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt));
+                    assert(fric >= 0.0);
 
                     this->v += (cal_force(this->x) - fric * this->v + noise) * half_dt_mass_inv;
                     this->x += this->v * dt;

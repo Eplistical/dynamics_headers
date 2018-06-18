@@ -8,7 +8,7 @@
 #include <random>
 #include "misc/vector.hpp"
 #include "misc/randomer.hpp"
-#include "misc/matrixop_lapack.hpp"
+#include "misc/matrixop_mkl.hpp"
 #include "misc/sgn.hpp"
 #include "particle_1d_base.hpp"
 
@@ -50,6 +50,7 @@ namespace {
 
 						// init hamiltonian
 						hamiltonian.update_H(x);
+						hamiltonian.update_dc(x);
 
 						// init psi
 						psi.assign(Norb * Nele, matrixop::ZERO_z);
@@ -98,6 +99,7 @@ namespace {
 					// nuclear part, velocity verlet
 					const double fric(nuclear_fric);
 					const double noise_force(randomer::normal(0.0, sqrt(2.0 * fric * this->kT / dt)));
+                    assert(fric >= 0.0);
 
 					this->v += (cal_force(this->x) - fric * this->v + noise_force) * 0.5 * dt * this->mass_inv;
 					this->x += this->v * dt;

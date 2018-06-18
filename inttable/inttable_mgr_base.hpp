@@ -45,15 +45,15 @@ namespace {
                 }
             }
 
+        private:
+            virtual void load_inttable_impl() = 0;
+            virtual double retrieve_impl(const string& key, double x) const = 0;
+
         public:
             map< string, vector<double> > inttable_dict;
             string fname;
             double xmin, xmax, dx, dx_inv;
             int Nx;
-
-        private:
-            virtual void load_inttable_impl() = 0;
-            virtual double retrieve_impl(const string& key, double x) const = 0;
     };
 
 };

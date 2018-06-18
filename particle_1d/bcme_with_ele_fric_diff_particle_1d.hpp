@@ -1,6 +1,7 @@
 #ifndef _BCME_PARTICLE_1D_HPP
 #define _BCME_PARTICLE_1D_HPP
 
+#include <algorithm>
 #include "cme_particle_1d.hpp"
 #include "misc/randomer.hpp"
 #include "misc/fermi.hpp"
@@ -44,7 +45,15 @@ namespace {
             }
 
             inline double cal_fric(double x) const {
-                return this->nuclear_fric;
+                // unbroadened friction
+                double f(misc::fermi(this->potential.cal_h(x) * this->kT_inv));
+                double dhdx(this->potential.cal_dhdx(x));
+
+                double unbroadened_elefric = this->kT_inv / this->potential.cal_gamma(x) * f * (1.0 - f) * pow(dhdx, 2);
+                double broadened_elefric = inttable_mgr.retrieve("fric", x);
+                double elefric = (broadened_elefric - unbroadened_elefric);
+
+                return std::max(this->nuclear_fric + elefric, 0.0);
             }
 
             inline double rk4_f(double x, double v, int surf, double fric, double noise) const {

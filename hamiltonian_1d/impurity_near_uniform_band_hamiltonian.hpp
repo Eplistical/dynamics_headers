@@ -16,10 +16,10 @@ namespace
 			using potential_t = PotentialType;
 
 		public:
-			ImpurityNearUniformBandHamiltonian_1D(const potential_t& POTENTIAL, double BANDWIDTH, int NSTATE, double GAMMA) noexcept :
-				potential(POTENTIAL)
+			ImpurityNearUniformBandHamiltonian_1D(const potential_t& POTENTIAL, double BANDWIDTH, int NTOTSTATE, int NBANDSTATE, double GAMMA) noexcept :
+				Hamiltonian_1D(NTOTSTATE), potential(POTENTIAL)
 				{
-					band_discretize(BANDWIDTH, NSTATE, GAMMA);
+					band_discretize(BANDWIDTH, NBANDSTATE, GAMMA);
 				}
 
 			~ImpurityNearUniformBandHamiltonian_1D() = default;
@@ -59,13 +59,13 @@ namespace
 			}
 
 		private:
-			void band_discretize(double bandwidth, int Nstate, double gamma) {
+			void band_discretize(double bandwidth, int Nbandstate, double gamma) {
 				// band_V
-				const double dos(static_cast<double>(Nstate) / bandwidth);
+				const double dos(static_cast<double>(Nbandstate) / bandwidth);
 				band_V = sqrt(gamma * 0.5 / M_PI / dos);
 
 				// band_e
-				const double de(bandwidth / Nstate);
+				const double de(bandwidth / Nbandstate);
 				const double spread(bandwidth * 0.5);
 				band_e.clear();
 				for (double ei(-spread + de / 2); ei < spread; ei += de) {
