@@ -18,6 +18,7 @@ namespace {
 	using std::mt19937;
 	using std::normal_distribution;
 	using std::sqrt;
+	using std::replace;
     using misc::sgn;
 
 	template <typename HamiltonianType>
@@ -29,12 +30,13 @@ namespace {
 			public:
 				IESH_Particle_1D(  double X, double V, double MASS, double KT, 
 						double NUCLEAR_FRIC, int NELE, int NHOLE,
-						double NDTQ,
+						double NDTQ, double THERMAL_TAU,
 						const hamiltonian_t& HAMILTONIAN) noexcept :
                 	Particle_1D(X, V, MASS, KT),
 					nuclear_fric(NUCLEAR_FRIC),
 					Nele(NELE), Nhole(NHOLE),
-					Ndtq(NDTQ),
+					Ndtq(NDTQ), 
+                    thermal_tau(THERMAL_TAU), thermal_tau_inv(1.0 / thermal_tau),
 					hamiltonian(HAMILTONIAN)
 					{
 						Norb = Nele + Nhole;
@@ -93,6 +95,22 @@ namespace {
 					return rst;
 				}
 
+                double get_nu_Ep() const 
+                {
+                    return hamiltonian.cal_potential(this->x, 0);
+                }
+
+                double get_el_Ep() const
+                {
+                    return cal_E(occ_vec);
+                }
+
+                double get_Ep() const
+                {
+                    return cal_E(occ_vec) 
+                        + hamiltonian.cal_potential(this->x, 0);
+                }
+
 			private:
 				void do_evolve(double dt, const std::string& alg) override
 				{
@@ -131,11 +149,9 @@ namespace {
 							hopper(dtq); 
 						}
 						// el_thermal
-						/*
-						if (thermal_tau_ > 0) {
+						if (thermal_tau > 0) {
 							el_thermal(dtq);
 						}
-						*/
 					}
 				}
 
@@ -198,6 +214,21 @@ namespace {
 					}
 				}
 
+                void el_thermal(double dt)
+                {
+                    if (randomer::rand() < dt * thermal_tau_inv) {
+                        const int i(randomer::choice(occ_vec));
+                        const int a(randomer::choice(uocc_vec));
+                        const double Ea(hamiltonian.eva.at(a));
+                        const double Ei(hamiltonian.eva.at(i));
+
+                        if ((Ei >= Ea) or randomer::rand() < exp(-this->kT_inv * (Ea - Ei))) {
+                            replace(occ_vec.begin(), occ_vec.end(), i, a);
+                            replace(uocc_vec.begin(), uocc_vec.end(), a, i);
+                        }
+                    }
+                }
+
 			public:
 				int Norb, Nele, Nhole;
 				vector< complex<double> > psi;
@@ -205,6 +236,7 @@ namespace {
 				hamiltonian_t hamiltonian;
 				double nuclear_fric;
 				int Ndtq;
+                const double thermal_tau, thermal_tau_inv;
 		};
 
 };

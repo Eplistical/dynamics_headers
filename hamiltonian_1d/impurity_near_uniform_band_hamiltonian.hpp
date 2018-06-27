@@ -24,7 +24,7 @@ namespace
 
 			~ImpurityNearUniformBandHamiltonian_1D() = default;
 
-			// potential functions
+		// potential functions
 		public:
 			double cal_potential(double x, int i) const {
 				return potential.cal_potential(x, i);
