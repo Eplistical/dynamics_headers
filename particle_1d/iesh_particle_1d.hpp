@@ -36,7 +36,7 @@ namespace {
 					nuclear_fric(NUCLEAR_FRIC),
 					Nele(NELE), Nhole(NHOLE),
 					Ndtq(NDTQ), 
-                    thermal_tau(THERMAL_TAU), thermal_tau_inv(1.0 / thermal_tau),
+                    thermal_tau(THERMAL_TAU), thermal_tau_inv(1.0 / THERMAL_TAU),
 					hamiltonian(HAMILTONIAN)
 					{
 						Norb = Nele + Nhole;
@@ -59,6 +59,9 @@ namespace {
 						for (int i(0); i < Nele; ++i) {
 							psi[occ_vec[i] + i * Norb].real(1.0);
 						}
+
+                        // hop statistics
+                        hop_count = 0;
 					}
 
 				~IESH_Particle_1D() noexcept = default;
@@ -75,7 +78,7 @@ namespace {
 				double cal_force(double x) const
 				{
 					double rst(hamiltonian.cal_force(x, 0));
-					for (const auto& i : occ_vec)
+					for (const auto& i : occ_vec) 
 						rst += hamiltonian.F.at(i);
 					return rst;
 				}
@@ -128,7 +131,7 @@ namespace {
 					hamiltonian.update_H(this->x);
 					hamiltonian.update_dc(this->x);
 
-					// electronic part, RK4
+					// electronic part
 					bool hopped(false);
 					const double dtq(dt / Ndtq);
 					const vector<double> deva((hamiltonian.eva - last_eva) / Ndtq);
@@ -136,6 +139,7 @@ namespace {
 					vector< complex<double> > k1, k2, k3, k4;
 
 					for (int idt(0); idt < Ndtq; ++idt) {
+                        // evolve
 						for (int k(0); k < Norb; ++k) {
 							T[k + k * Norb] = -matrixop::I_z * (last_eva[k] + idt * deva[k]);
 						}
@@ -143,9 +147,10 @@ namespace {
 						k2 = matrixop::matmat(T, psi + 0.5 * k1, Norb, dtq);
 						k3 = matrixop::matmat(T, psi + 0.5 * k2, Norb, dtq);
 						k4 = matrixop::matmat(T, psi + k3, Norb, dtq);
-						psi = psi + (k1 + 2.0 * k2 + 2.0 * k3+ k4) / 6.0;
+						psi = psi + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0;
 						// hopping
 						if (not hopped) {
+							//hopped = hopper(dtq); 
 							hopper(dtq); 
 						}
 						// el_thermal
@@ -155,7 +160,7 @@ namespace {
 					}
 				}
 
-				void hopper(double dt)
+				bool hopper(double dt)
 				{
 					const static int Nhop(Nele * Nhole);
 					static vector< complex<double> > S_inv(Nele * Nele);
@@ -190,28 +195,41 @@ namespace {
 							}
 						}
 					}
-					assert(Phop <= 1);
 
+                    // if Phop is too large 
+                    int Nattempt(1);
+                    if (Phop > 1.0) {
+                        Nattempt = static_cast<int>(Phop / 0.1) + 1;
+                    }
+                    probability = probability / Nattempt;
+                    Phop = Phop / Nattempt;
+                    
 					// append non-hop probability
 					probability[count] = 1.0 - Phop; 
 					from_to_indices[count * 2] = -1;
 					from_to_indices[1 + count * 2] = -1;
+
 					// random number
-					const int attempt_hop(randomer::discrete(probability));
-					if (attempt_hop != count) {
-						const int attempt_from_idx(from_to_indices[attempt_hop * 2]);
-						const int attempt_to_idx(from_to_indices[1 + attempt_hop * 2]);
-						const int i(occ_vec[attempt_from_idx]);
-						const int a(uocc_vec[attempt_to_idx]);
-						const double Ek(this->get_Ek());
-						const double deltaE(hamiltonian.eva[a] - hamiltonian.eva[i]);
-						// not frustrated
-						if (deltaE <= Ek) {
-							this->v *= sqrt((Ek - deltaE) / Ek);
-							occ_vec[attempt_from_idx] = a;
-							uocc_vec[attempt_to_idx] = i;
-						}
-					}
+                    for (int iattempt(0); iattempt < Nattempt; ++iattempt) {
+                        const int attempt_hop(randomer::discrete(probability.begin(), probability.begin() + count + 1));
+                        if (attempt_hop != count) {
+                            const int attempt_from_idx(from_to_indices[attempt_hop * 2]);
+                            const int attempt_to_idx(from_to_indices[1 + attempt_hop * 2]);
+                            const int i(occ_vec[attempt_from_idx]);
+                            const int a(uocc_vec[attempt_to_idx]);
+                            const double Ek(this->get_Ek());
+                            const double deltaE(hamiltonian.eva[a] - hamiltonian.eva[i]);
+                            // not frustrated
+                            if (deltaE <= Ek) {
+                                this->v *= sqrt((Ek - deltaE) / Ek);
+                                occ_vec[attempt_from_idx] = a;
+                                uocc_vec[attempt_to_idx] = i;
+                                hop_count += 1;
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
 				}
 
                 void el_thermal(double dt)
@@ -237,6 +255,7 @@ namespace {
 				double nuclear_fric;
 				int Ndtq;
                 const double thermal_tau, thermal_tau_inv;
+                uint64_t hop_count;
 		};
 
 };
